@@ -178,7 +178,7 @@ function show(){
 
 function selectfield(event){
     selected = event.currentTarget.innerHTML
-    obj = $("#d_table th.th-sm")
+    obj = $("#d_table th.th-sm.selected")
     if (obj.length==1){
         obj[0].classList.remove('selected')
     }

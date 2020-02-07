@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 from zipfile import ZipFile
 import dtype as dt
-
+# import tracemalloc
 # Flask utils
 from flask import Flask, redirect, url_for, request,make_response, render_template, jsonify
 from flask_cors import CORS
@@ -29,23 +29,22 @@ app.config['DAY']=None
 
 def makecsv(path,filename):
     allfiles = [f.path for f in os.scandir(path)]
-    a = [pd.read_csv(files,header=None,names=dt.columns(),dtype=dt.Dtype()) for files in allfiles]
-    result = pd.concat(a)
-    result = result.reset_index(drop=True)
-    result = result
+    ddf = pd.read_csv(allfiles[0],header=None,names=dt.columns(),dtype=dt.Dtype())
+    for i in range(1,len(allfiles)):
+        ddf.append(pd.read_csv(allfiles[i],header=None,names=dt.columns(),dtype=dt.Dtype()))
+    return ddf
+
+
+def savecsv(dataframe,filename):
     try:
-        shutil.rmtree(path)
-        result.to_csv("Dataset\\"+filename.split('.')[0]+".csv")
+        dataframe.to_csv("Dataset\\"+filename+".csv")
         return True
-    except OSError as e:
-        print("Error: %s : %s" % (path, e.strerror))
+    except:
         return False
-    
 
 def unzip(file,filename):
     with ZipFile(file,'r') as zipObj:
-        zipObj.extractall('Dataset\\'+filename) 
-    return makecsv('Dataset\\'+filename,filename)
+        zipObj.extractall('Dataset\\'+filename)
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ['zip']
@@ -122,10 +121,15 @@ def upload_file():
             return redirect(request.url)
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
-            if unzip(file,filename):
+            filename = filename.split('.')[0]
+            path = 'Dataset\\'+filename
+            unzip(file,filename)
+            v = makecsv(path,filename) 
+            shutil.rmtree(path)
+            if savecsv(v,filename):
                 return redirect(url_for('index'))
             else:
-                flash('Extraction failed')
+                # flash('Extraction failed')
                 return redirect(request.url)
     else:
         return '''
@@ -140,7 +144,7 @@ def upload_file():
 
 
 if __name__ == '__main__':
-    app.debug = True
+    # app.debug = True
     # Threaded option to enable multiple instances for multiple user access support
     app.run(host='0.0.0.0',threaded=True,port=5500)
 
