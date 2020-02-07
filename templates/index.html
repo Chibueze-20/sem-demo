@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% from "marcos.html" import active_link with context %}
+{% block content %}
+
+<div class="row">
+    <div class="col-12">
+        <div class="p-3">
+            <div class="d-flex w-100">
+                    <ul id="menu" class="nav flex-grow-1 nav-tabs flex-fill nav-justified">
+                        {% if files|length > 0 %}
+                        {% for file in files %}
+                        {{active_link(file,file)}}
+                        {% endfor %}
+                        {% else %}
+                        <p>Upload zip files</p>
+                        {% endif %}
+                    </ul>
+                <div>
+                    <a id="upload" class="nav-link ml-auto btn btn-primary"  href="{{ url_for('upload_file') }}">Upload zip file</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- other side -->
+    <div class="col-12 container-fluid mt-3">
+        {% block datapage %}{% endblock %}
+    </div>
+</div>
+<script>
+</script>
+{% endblock %}

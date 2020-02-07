@@ -1,0 +1,19 @@
+#list .report.active {
+	box-shadow: 5px 3px 4px gray;
+	border-radius: 10px;
+}
+#menu a.active {
+	box-shadow: 2px 2px 5px gray;
+    border-radius: 5px;
+}
+.hover:hover{
+	box-shadow: 2px 2px 5px gray;
+	background-color: #007bff;
+	color: white;
+	font-weight: bold;
+}
+.selected{
+	background-color: #007bff;
+	color: white;
+	font-weight: bolder;
+}

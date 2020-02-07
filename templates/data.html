@@ -1,0 +1,76 @@
+{% extends "index.html" %}
+{% block datapage %}
+<div class="row">
+    <div class="col-md-3 col-sm-12">
+        <div style="overflow-y: auto;height:33em">
+            <ul id=list class="nav nav-pills flex-column py-4">
+                <li class="my-3 nav-item">
+                    <h3>Reports</h3>
+                </li>
+                {% for i in reports %}
+                <li class="my-2 nav-item">
+                    <a href="#" class="nav-link report" onclick="report('{{i}}',this)">{{i}}</a>
+                </li>
+                {% endfor %}
+                <li class=" my-2 nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#" role="button"
+                        aria-haspopup="true" aria-expanded="false">AllEvents</a>
+                    <div style="height: 10em;overflow-y: auto;" class="dropdown-menu">
+                        {% for ev in Events|sort %}
+                        <a class="dropdown-item" onclick="Getevent('{{ev}}')" href="#">{{ev}}</a>
+                        {% endfor %}
+                    </div>
+                </li>
+            </ul>
+        </div>
+        <a id="download" class="btn btn-primary my-4" role="button" href="#">Download as csv</a>
+    </div>
+    <div class="col-md-9 col-sm-12">
+        <div id="placeholder" style="display: block;height: 33em;" class="h-100">
+            <h1 class="flex-center" style="background-color: #cfc1c11f;">NO REPORT CHOSEN</h1>
+        </div>
+        <div style="display: none;" id="table_wrap">
+            <div class="d-flex justify-content-between">
+                <ul  id="pagination" class="nav mx-3 flex-fill nav-pills">
+                    <li class="nav-item">
+                        <p class="pt-2 mr-2">Showing</p>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link pg active" onclick="Pagesize(20,this)" href="#">20</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link pg" onclick="Pagesize(50,this)" href="#">50</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link pg" onclick="Pagesize(100,this)" href="#">100</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link pg" onclick="Pagesize(200,this)" href="#">200</a>
+                    </li>
+                </ul>
+                <div class="flex-fill">
+                    <ul class="nav mx-3 flex-fill nav-pills">
+                        <li class="nav-item waves-effect">
+                            <a class="nav-link hover" onclick="prevpage()" href="#">prev</a>
+                        </li>
+                        <li class="nav-item waves-effect">
+                            <a class="nav-link hover"  onclick="nextpage()" href="#">next</a>
+                        </li>
+                    </ul>
+                </div>
+                <!-- Search form -->
+                <form class="form-inline md-form form-sm active-cyan-2 mt-2">
+                    <input title="press enter to search query" class="form-control form-control-sm mr-3 w-75" type="text" placeholder="Search"
+                        aria-label="Search">
+                    <i class="fas fa-search" aria-hidden="true"></i>
+                </form>
+            </div>
+            <div class="table-responsive">
+                <table id="d_table" style="display: block;" class="table table-bordered" width="100%">
+                </table>
+            </div>
+            
+
+        </div>
+    </div>
+    {% endblock %}
