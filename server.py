@@ -130,7 +130,7 @@ def upload_file():
                 return redirect(url_for('index'))
             else:
                 # flash('Extraction failed')
-                return redirect(request.url)
+                return 'fatal error', 502
     else:
         return '''
         <!doctype html>
