@@ -72,13 +72,15 @@ def load_day(name=None):
     allEvents = dataframeAll.EventType.unique()
     reports =    ['SourceDestEventFreq',
         'EventCount',
-        'userLogonFailureNoLogon',
+        'failedAuthentication',
         'SourceEventCount',
         'EventbySource',
         'activeSessions',
         'anonymousLogon',
         'MachineSessions',
-        'userLogonFailure']
+        'userLogonFailure',
+        'userlogonSummary',
+        'policyScopeChange']
 
     return render_template('data.html',files=allfiles,Events=allEvents,reports=reports)
 
@@ -144,7 +146,7 @@ def upload_file():
 
 
 if __name__ == '__main__':
-    # app.debug = True
+    app.debug = True
     # Threaded option to enable multiple instances for multiple user access support
     app.run(host='0.0.0.0',threaded=True,port=5500)
 

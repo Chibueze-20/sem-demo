@@ -48,18 +48,24 @@ def destSource(dataframeAll):
     dest_source = dataframeAll.copy()
     dest_source = pdx.DataFrame({"DetectionTime":dest_source.DetectionTime, "DestinationMachine":dest_source.DestinationMachine, "SourceMachine":dest_source.SourceMachine, "Event": dest_source.EventType,"DestinationAccount":dest_source.DestinationAccount,"SourceAccount":dest_source.SourceAccount})
     dest_source.SourceMachine = dest_source.SourceMachine.fillna("unknown")
+    dest_source.DestinationMachine = dest_source.DestinationMachine.fillna("unknown")
+    dest_source.DestinationAccount = dest_source.DestinationAccount("unknown")
+    dest_source.SourceAccount = dest_source.SourceAccount.fillna("unknown")
     dest_source = dest_source.groupby(['SourceMachine','DestinationMachine','DestinationAccount','Event']).size().unstack()
     dest_source = dest_source.reset_index()
     return dest_source
 
-def userLogonFailureNoLogon(dataframeAll):
-    dest_source = destSource(dataframeAll).fillna(0,axis=0)
-    logonfailuresummary = dest_source.groupby(['SourceMachine','DestinationAccount','DestinationMachine']).sum()['UserLogonFailure'] #can change to Source/Destination machine for more insight
-    logonsummary = dest_source.groupby(['SourceMachine','DestinationAccount','DestinationMachine']).sum()['UserLogon']
-    summary = pdx.concat([logonsummary,logonfailuresummary],axis=1)
-    summary = summary[(summary.UserLogon==0)&(summary.UserLogonFailure>0)].sort_values('UserLogonFailure',ascending=False)
-    summary = summary.reset_index()
-    summary.to_csv("Dataset\\temp\\user_logon_failure_no_logon.csv",index=False)
+def failedAuthentication(dataframeAll):
+    dest_source = GetEvent(dataframeAll,"FailedAuthentication").dropna(1,how='all')
+    print(dest_source.columns)
+    if  dest_source.empty: return None
+    # dest_source = dest_source.SourceMachine.fillna("unknown",inplace=True)
+    # dest_source = dest_source.DestinationMachine.fillna("unknown",inplace=True)
+    # dest_source = dest_source.DestinationAccount.fillna("unknown",inplace=True)
+    # faileduserAuthentication = dest_source.groupby(['SourceMachine','DestinationAccount','DestinationMachine']).size().reset_index()
+    # faileduserAuthentication.columns = ['SourceMachine','DestinationAccount','DestinationMachine','FailedAuthentication']
+    # faileduserAuthentication.to_csv("Dataset\\temp\\failed_Authentication.csv",index=False)
+    dest_source.to_csv("Dataset\\temp\\failed_Authentication.csv",index=False)
 
 def SourceEvent(dataframeAll):
     source_event = pdx.DataFrame({'SourceMachine':dataframeAll.SourceMachine,'Event':dataframeAll.EventType})
@@ -77,7 +83,7 @@ def EventbySource(dataframeAll):
     machine_event_count =  SourceEvent(dataframeAll).set_index(['SourceMachine','Event'])
     machine_event_count = machine_event_count.groupby(['SourceMachine','Event']).size().reset_index()
     machine_event_count.columns = ['SourceMachine','Event','Count']
-    machine_event_count.sort_values(['SourceMachine','Count']).to_csv("Dataset\\temp\\event_by_source.csv",index=False)
+    machine_event_count.sort_values(['Count','SourceMachine']).to_csv("Dataset\\temp\\event_by_source.csv",index=False)
 
 def GetEvent(dataframeAll, Event=None):
     if Event==None or not(Event in dataframeAll.EventType.unique()):
@@ -161,27 +167,51 @@ def userLogonFailure(dataframeAll):
     cc.columns = ["SourceMachine","DestinationAccount","DestinationMachine","UserLogonFailure"]
     cc.to_csv("Dataset\\temp\\user_logon_failure.csv",index=False)
 
+def userlogonSummary(dataframeAll):
+    allLogons = GetEvent(dataframeAll,"UserLogon")
+    allLogons.DestinationMachine=allLogons.DestinationMachine.str.lower()
+    allLogons.SourceMachine = allLogons.SourceMachine.fillna("unknown")
+    allLogons.DestinationMachine = allLogons.DestinationMachine.fillna("unknown")
+    allLogons.DestinationAccount.fillna("unknown")
+    userlogon_summary = allLogons.groupby(['SourceMachine','DestinationAccount','DestinationMachine']).size().reset_index()
+    userlogon_summary.columns = ['SourceMachine','DestinationAccount','DestinationMachine','Count']
+    userlogon_summary = userlogon_summary.sort_values('Count',ascending=False).reset_index(drop=True)
+    userlogon_summary.to_csv("Dataset\\temp\\user_logon_summary.csv",index=False)
+
+def policyScopeChange(dataframeAll):
+    policyscopechange_summary = GetEvent(dataframeAll,'PolicyScopeChange')
+    policyscopechange_summary = policyscopechange_summary.dropna(axis=1,how='all')
+    policyscopechange_summary = policyscopechange_summary.groupby(['DetectionIP','DestinationDomain','DestinationAccount']).size().reset_index()
+    policyscopechange_summary.columns = ['DetectionIP','DestinationDomain','DestinationAccount','Count']
+    policyscopechange_summary = policyscopechange_summary.sort_values('Count',ascending=False).reset_index(drop=True)
+    policyscopechange_summary.to_csv("Dataset\\temp\\policy_count.csv")
+
 def preProcess(dataframeAll):
     SourceDestEventFreq(dataframeAll)
     EventCount(dataframeAll)
-    userLogonFailureNoLogon(dataframeAll)
+    failedAuthentication(dataframeAll)
     SourceEventCount(dataframeAll)
     EventbySource(dataframeAll)
     activeSessions(dataframeAll)
     anonymousLogon(dataframeAll)
     MachineSessions(dataframeAll)
     userLogonFailure(dataframeAll)
+    userlogonSummary(dataframeAll)
+    policyScopeChange(dataframeAll)
 
 def mapping(key):
     maps = {
         'SourceDestEventFreq':'Source_destination_event_frequency',
         'EventCount':'event_count',
-        'userLogonFailureNoLogon':'user_logon_failure_no_logon',
+        'failedAuthentication':'failed_Authentication',
         'SourceEventCount':'source_event_count',
         'EventbySource':'event_by_source',
         'activeSessions':'user_active_sessions',
         'anonymousLogon':'anonymous_logon',
         'MachineSessions':'machine_session',
-        'userLogonFailure':'user_logon_failure'
+        'userLogonFailure':'user_logon_failure',
+        'userlogonSummary':'user_logon_summary',
+        'policyScopeChange':'policy_count'
+
     }
     return maps[key]
