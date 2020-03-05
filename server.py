@@ -25,22 +25,14 @@ CORS(app)
 app.config['DATASET'] = 'Dataset'
 app.config['REPORT'] = 'Dataset\\temp'
 app.config['DAY']=None
-
-
+dataframeAll = None
+name = ''
 def makecsv(path,filename):
     allfiles = [f.path for f in os.scandir(path)]
     ddf = pd.read_csv(allfiles[0],header=None,names=dt.columns(),dtype=dt.Dtype())
     for i in range(1,len(allfiles)):
         ddf.append(pd.read_csv(allfiles[i],header=None,names=dt.columns(),dtype=dt.Dtype()))
     return ddf
-
-
-def savecsv(dataframe,filename):
-    try:
-        dataframe.to_csv("Dataset\\"+filename+".csv")
-        return True
-    except:
-        return False
 
 def unzip(file,filename):
     with ZipFile(file,'r') as zipObj:
@@ -51,24 +43,23 @@ def allowed_file(filename):
 
 @app.route('/', methods=['GET'])
 def index():
-     allfiles = os.listdir('Dataset')
-     allfiles = [f.split('.')[0] for f in allfiles]
-     allfiles.remove('temp')
+    if name=='':
+        allfiles=[]
+    else:
+        allfiles=[name]
     # Main page
-     return render_template('index.html',files=allfiles)
+    return render_template('index.html',files=allfiles)
 
 @app.route('/data/<name>',methods=['GET'])
 def load_day(name=None):
-    selectedfile = name+".csv"
-    global dataframeAll
-    dataframeAll = pd.read_csv(app.config['DATASET']+"\\"+selectedfile,dtype=dt.Dtype())
-    if app.config['DAY'] != name:
-        dt.preProcess(dataframeAll)
-        app.config['DAY'] = name
-    
-    allfiles = os.listdir('Dataset')
-    allfiles = [f.split('.')[0] for f in allfiles]
-    allfiles.remove('temp')
+    try:
+        if name =='' or dataframeAll == None:
+            return redirect(url_for('index'))
+    except ValueError:
+        if name == '':
+            return redirect(url_for('index'))
+        pass
+    allfiles = [name]
     allEvents = dataframeAll.EventType.unique()
     reports =    ['SourceDestEventFreq',
         'EventCount',
@@ -86,22 +77,50 @@ def load_day(name=None):
 
 @app.route('/report/save/<file>/',methods=['GET'])
 def getfile(file=None):
-    s_file = dt.mapping(file)
-    fil = f"{s_file}.csv"
-    return send_from_directory(app.config['REPORT'],fil,as_attachment=True)
+    try:
+        if name =='' or dataframeAll == None:
+            return redirect(url_for('index'))
+    except ValueError:
+        if name == '':
+            return redirect(url_for('index'))
+        pass
+    response = make_response(dt.generatereport(file,dataframeAll).dropna(1,how='all').to_csv(index=False))
+    cd = 'attachment; filename='+file+'.csv'
+    response.headers['Content-Disposition'] = cd 
+    response.mimetype='text/csv'
+    return response
 
 @app.route('/report/<report>')
 def getreport(report=None):
-    s_file = dt.mapping(report)
-    dframe = pd.read_csv(app.config['REPORT']+"\\"+s_file+".csv")
-    return dframe.to_csv(index=False)
+    try:
+        if name =='' or dataframeAll == None:
+            return redirect(url_for('index'))
+    except ValueError:
+        if name == '':
+            return redirect(url_for('index'))
+        pass
+    return dt.generatereport(report,dataframeAll).dropna(1,how='all').to_csv(index=False)
 
 @app.route('/event/<event>',methods=['GET'])
 def getevent(event=None):
-    return dt.GetEvent(dataframeAll,event).dropna(1,how='all').iloc[:,1:].to_csv(index=False)
+    try:
+        if name =='' or dataframeAll == None:
+            return redirect(url_for('index'))
+    except ValueError:
+        if name == '':
+            return redirect(url_for('index'))
+        pass
+    return dt.GetEvent(dataframeAll,event).dropna(1,how='all').to_csv(index=False)
 
 @app.route('/event/save/<event>',methods=['GET'])
 def saveevent(event=None):
+    try:
+        if name =='' or dataframeAll == None:
+            return redirect(url_for('index'))
+    except ValueError:
+        if name == '':
+            return redirect(url_for('index'))
+        pass
     response = make_response(dt.GetEvent(dataframeAll,event).dropna(1,how='all').to_csv(index=False))
     cd = 'attachment; filename='+event+'.csv'
     response.headers['Content-Disposition'] = cd 
@@ -110,6 +129,8 @@ def saveevent(event=None):
 
 @app.route('/upload', methods=['GET', 'POST'])
 def upload_file():
+    global name
+    global dataframeAll
     if request.method == 'POST':
         # check if the post request has the file part
         if 'file' not in request.files:
@@ -126,13 +147,10 @@ def upload_file():
             filename = filename.split('.')[0]
             path = 'Dataset\\'+filename
             unzip(file,filename)
-            v = makecsv(path,filename) 
+            name=filename.split('.')[0]
+            dataframeAll = (makecsv(path,filename)).iloc[1:,:] 
             shutil.rmtree(path)
-            if savecsv(v,filename):
-                return redirect(url_for('index'))
-            else:
-                # flash('Extraction failed')
-                return 'fatal error', 502
+            return redirect(url_for('index'))
     else:
         return '''
         <!doctype html>

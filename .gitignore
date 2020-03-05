@@ -131,3 +131,4 @@ dmypy.json
 #custom
 /Dataset/*.csv
 /Dataset/temp/*.csv
+/static/js/paginate.js

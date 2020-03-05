@@ -37,12 +37,12 @@ def SourceDestEventFreq(dataframeAll):
     temp.DestinationMachine = temp.DestinationMachine.fillna("unknown")
     temp = temp.groupby(["SourceMachine","DestinationMachine","EventType"]).size().reset_index()
     temp.columns = ["SourceMachine","DestinationMachine","EventType","Count"]
-    temp.sort_values("Count",ascending=False).to_csv("Dataset\\temp\\Source_destination_event_frequency.csv",index=False)
+    return temp.sort_values("Count",ascending=False)
 
 def EventCount(dataframeAll):
     eventTypeDf = pdx.DataFrame(dataframeAll['EventType'].value_counts().reset_index())
     eventTypeDf.columns = ['Event','Count']
-    eventTypeDf.sort_values('Count',ascending=False).to_csv("Dataset\\temp\\event_count.csv",index=False)
+    return eventTypeDf.sort_values('Count',ascending=False)
 
 def destSource(dataframeAll):
     dest_source = dataframeAll.copy()
@@ -56,16 +56,21 @@ def destSource(dataframeAll):
     return dest_source
 
 def failedAuthentication(dataframeAll):
-    dest_source = GetEvent(dataframeAll,"FailedAuthentication").dropna(1,how='all')
-    print(dest_source.columns)
-    if  dest_source.empty: return None
+    dest_source = GetEvent(dataframeAll,"FailedAuthentication")
+    # print(dest_source.columns)
+    try:
+        if  dest_source == None:
+            return pdx.DataFrame(columns=['SourceMachine','DestinationAccount','DestinationMachine','FailedAuthentication']) 
+    except ValueError:
+        pass
+    dest_source = dest_source.dropna(1,how='all')
     # dest_source = dest_source.SourceMachine.fillna("unknown",inplace=True)
     # dest_source = dest_source.DestinationMachine.fillna("unknown",inplace=True)
     # dest_source = dest_source.DestinationAccount.fillna("unknown",inplace=True)
     # faileduserAuthentication = dest_source.groupby(['SourceMachine','DestinationAccount','DestinationMachine']).size().reset_index()
     # faileduserAuthentication.columns = ['SourceMachine','DestinationAccount','DestinationMachine','FailedAuthentication']
     # faileduserAuthentication.to_csv("Dataset\\temp\\failed_Authentication.csv",index=False)
-    dest_source.to_csv("Dataset\\temp\\failed_Authentication.csv",index=False)
+    return dest_source
 
 def SourceEvent(dataframeAll):
     source_event = pdx.DataFrame({'SourceMachine':dataframeAll.SourceMachine,'Event':dataframeAll.EventType})
@@ -77,24 +82,31 @@ def SourceEvent(dataframeAll):
 def SourceEventCount(dataframeAll):
     source_event_count = SourceEvent(dataframeAll).groupby('SourceMachine').size().reset_index()
     source_event_count.columns = ['SourceMachine','Event_num']
-    source_event_count.sort_values('Event_num',ascending=False).to_csv("Dataset\\temp\\source_event_count.csv",index=False)
+    return source_event_count.sort_values('Event_num',ascending=False)
 
 def EventbySource(dataframeAll):
     machine_event_count =  SourceEvent(dataframeAll).set_index(['SourceMachine','Event'])
     machine_event_count = machine_event_count.groupby(['SourceMachine','Event']).size().reset_index()
     machine_event_count.columns = ['SourceMachine','Event','Count']
-    machine_event_count.sort_values(['Count','SourceMachine']).to_csv("Dataset\\temp\\event_by_source.csv",index=False)
+    return machine_event_count.sort_values(['Count','SourceMachine'])
 
 def GetEvent(dataframeAll, Event=None):
     if Event==None or not(Event in dataframeAll.EventType.unique()):
         return None
     else:
-        return dataframeAll[dataframeAll["EventType"]==Event].reset_index(drop=True)
+        if Event in dataframeAll.EventType.unique():
+            return dataframeAll[dataframeAll["EventType"]==Event].reset_index(drop=True)
+        else:
+            return None
 
 def activeSessions(dataframeAll):
     UserLogon = GetEvent(dataframeAll,'UserLogon')
     UserLogoff = GetEvent(dataframeAll,'UserLogoff')
-    
+    try:
+        if (UserLogoff == None) or (UserLogon == None):
+            return pdx.DataFrame(columns=['DestinationMachine','logon_count','logout_count','ActiveSessions'])
+    except ValueError:
+        pass    
     UserLogon.DestinationMachine=UserLogon.DestinationMachine.str.lower()
     UserLogoff.DestinationMachine=UserLogoff.DestinationMachine.str.lower()
         
@@ -119,20 +131,30 @@ def activeSessions(dataframeAll):
 
     useractivesessions =  useractivesessions.sort_values('ActiveSessions',ascending=False).reset_index(drop=True)
 
-    useractivesessions.to_csv("Dataset\\temp\\user_active_sessions.csv",index=False)
+    return useractivesessions
 
 def anonymousLogon(dataframeAll):
     UserLogon = GetEvent(dataframeAll,'UserLogon')
+    try:
+        if UserLogon == None:
+            return pdx.DataFrame(columns=["DestinationMachine","SourceMachine","Count"])
+    except ValueError:
+        pass
+    
     anonymous_login = UserLogon[UserLogon.DestinationAccount=='ANONYMOUS LOGON']
     anonymous_login = anonymous_login.dropna(axis=1,how='all')
     anonymous_login = anonymous_login.groupby(["DestinationMachine","SourceMachine"]).size().reset_index()
     anonymous_login.columns = ["DestinationMachine","SourceMachine","Count"]
-    anonymous_login.to_csv("Dataset\\Temp\\anonymous_logon.csv",index=False)
+    return anonymous_login
 
 def MachineSessions(dataframeAll):
     MachineLogon = GetEvent(dataframeAll,'MachineLogon')
     MachineLogoff = GetEvent(dataframeAll,'MachineLogoff')
-
+    try:
+        if (MachineLogon == None) or (MachineLogoff == None):
+            return pdx.DataFrame(columns=['DestinationMachine','logon_count','logout_count','ActiveSessions'])
+    except  ValueError:
+        pass
     MachineLogon.DestinationMachine=MachineLogon.DestinationMachine.str.lower()
     MachineLogoff.DestinationMachine=MachineLogoff.DestinationMachine.str.lower()
 
@@ -153,11 +175,15 @@ def MachineSessions(dataframeAll):
     machineactivesessions['ActiveSessions'] = np.subtract(machineactivesessions.logon_count,machineactivesessions.logout_count)
 
     machineactivesessions = machineactivesessions.sort_values('ActiveSessions',ascending=False).reset_index(drop=True)
-    machineactivesessions.to_csv('Dataset\\temp\\machine_session.csv',index=False)
+    return machineactivesessions
 
 def userLogonFailure(dataframeAll):
     faileduserlogon = GetEvent(dataframeAll,'UserLogonFailure')
-
+    try:
+        if faileduserlogon == None:
+            return pdx.DataFrame(columns=["SourceMachine","DestinationAccount","DestinationMachine","UserLogonFailure"])
+    except ValueError:
+        pass    
     faileduserlogon.SourceMachine.fillna("unknown",inplace=True)
 
     faileduserlogon.DestinationMachine.fillna("unknown",inplace=True)
@@ -165,10 +191,15 @@ def userLogonFailure(dataframeAll):
 
     cc = faileduserlogon.groupby(["SourceMachine","DestinationAccount","DestinationMachine"]).size().reset_index()
     cc.columns = ["SourceMachine","DestinationAccount","DestinationMachine","UserLogonFailure"]
-    cc.to_csv("Dataset\\temp\\user_logon_failure.csv",index=False)
+    return cc
 
 def userlogonSummary(dataframeAll):
     allLogons = GetEvent(dataframeAll,"UserLogon")
+    try:
+        if  allLogons == None:
+            return pdx.DataFrame(columns=['SourceMachine','DestinationAccount','DestinationMachine','Count'])
+    except ValueError:
+        pass
     allLogons.DestinationMachine=allLogons.DestinationMachine.str.lower()
     allLogons.SourceMachine = allLogons.SourceMachine.fillna("unknown")
     allLogons.DestinationMachine = allLogons.DestinationMachine.fillna("unknown")
@@ -176,15 +207,20 @@ def userlogonSummary(dataframeAll):
     userlogon_summary = allLogons.groupby(['SourceMachine','DestinationAccount','DestinationMachine']).size().reset_index()
     userlogon_summary.columns = ['SourceMachine','DestinationAccount','DestinationMachine','Count']
     userlogon_summary = userlogon_summary.sort_values('Count',ascending=False).reset_index(drop=True)
-    userlogon_summary.to_csv("Dataset\\temp\\user_logon_summary.csv",index=False)
+    return userlogon_summary
 
 def policyScopeChange(dataframeAll):
     policyscopechange_summary = GetEvent(dataframeAll,'PolicyScopeChange')
+    try:
+        if  policyscopechange_summary == None:
+            return pdx.DataFrame(columns=['DetectionIP','DestinationDomain','DestinationAccount','Count'])
+    except ValueError:
+        pass
     policyscopechange_summary = policyscopechange_summary.dropna(axis=1,how='all')
     policyscopechange_summary = policyscopechange_summary.groupby(['DetectionIP','DestinationDomain','DestinationAccount']).size().reset_index()
     policyscopechange_summary.columns = ['DetectionIP','DestinationDomain','DestinationAccount','Count']
     policyscopechange_summary = policyscopechange_summary.sort_values('Count',ascending=False).reset_index(drop=True)
-    policyscopechange_summary.to_csv("Dataset\\temp\\policy_count.csv")
+    return policyscopechange_summary
 
 def preProcess(dataframeAll):
     SourceDestEventFreq(dataframeAll)
@@ -215,3 +251,27 @@ def mapping(key):
 
     }
     return maps[key]
+
+def generatereport(report,dataframeAll):
+    if report == 'SourceDestEventFreq':
+        return SourceDestEventFreq(dataframeAll)
+    if report == 'EventCount':
+        return EventCount(dataframeAll)
+    if report == 'failedAuthentication':
+        return failedAuthentication(dataframeAll)
+    if report == 'SourceEventCount':
+        return SourceEventCount(dataframeAll)
+    if report == 'EventbySource':
+        return EventbySource(dataframeAll)
+    if report == 'activeSessions':
+        return activeSessions(dataframeAll)
+    if report == 'anonymousLogon':
+        return anonymousLogon(dataframeAll)
+    if report == 'MachineSessions':
+        return MachineSessions(dataframeAll)
+    if report == 'userLogonFailure':
+        return userLogonFailure(dataframeAll)
+    if report == 'userlogonSummary':
+        return userlogonSummary(dataframeAll)
+    if report == 'policyScopeChange':
+        return policyScopeChange(dataframeAll)
